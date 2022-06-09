@@ -9,6 +9,8 @@ scw init
 ### Create a Scaleway instance
 
 ```bash
+wget https://raw.githubusercontent.com/xjantoth/scw-cks/main/install_master.sh
+
 scw instance server \
 create type=DEV1-S zone=fr-par-1 \
 image=ubuntu_focal root-volume=l:20G \
