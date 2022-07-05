@@ -1,0 +1,17 @@
+---
+- hosts: localhost
+  gather_facts: no
+  tasks:
+    - name: generate an OpenSSH rsa keypair
+      become: no
+      community.crypto.openssh_keypair:
+        path: "{{ playbook_dir }}/id_rsa"
+        size: 4096
+
+
+- hosts: localhost
+  gather_facts: no
+  become: no
+  roles:
+    - provision-scw-instance
+

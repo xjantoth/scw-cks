@@ -1,0 +1,4 @@
+ansible/terraform/.terraform.lock.hcl
+ansible/terraform/.terraform
+ansible/terraform/terraform.tfstate
+

@@ -31,3 +31,15 @@ scw instance server delete $(scw instance server list name=scw-k8s-cmd -ojson | 
 ```bash
 ssh -i ~/.ssh/scw-k8s-cks  root@$(scw instance server list name=scw-k8s-cmd -ojson | jq -r '.[].public_ip.address')
 ```
+
+
+### Ansible
+
+
+```bash
+cd ansible
+ansible-playbook scw-playbook.yaml \
+-e SCW_ACCESS_KEY="<...>" \
+-e SCW_SECRET_KEY="<...>" \
+-e PROJECT_ID="<...>"
+```

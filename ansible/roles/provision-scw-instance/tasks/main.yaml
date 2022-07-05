@@ -1,0 +1,35 @@
+---
+- name: provision Scaleway instance
+  become: no
+  environment:
+    SCW_ACCESS_KEY: "{{ SCW_ACCESS_KEY }}"
+    SCW_SECRET_KEY: "{{ SCW_SECRET_KEY }}"
+    TF_VAR_project_id: "{{ PROJECT_ID }}"  
+  terraform:
+    force_init: yes
+    project_path: "{{ playbook_dir }}/terraform"
+    backend_config:
+      path: "{{ playbook_dir }}/terraform/terraform.tfstate"
+    # state: present
+  register: _scw
+
+- name: Adding host to ansible inventory on the fly
+  add_host:
+    name: "{{ _scw.outputs['public_ip']['value'] }}"  # the mane of server
+    groups: scw
+    ansible_host: "{{ _scw.outputs['public_ip']['value'] }}"
+    ansible_user: "ubuntu"
+    ansible_connection: "ssh"
+    ansible_ssh_common_args: "-o StrictHostKeyChecking=no"
+  register: _inv
+
+- name: inventory on the fly
+  debug:
+    msg: "{{ _inv }}"
+
+  #- name: wait until ssh at EC2 available
+  #  command: "sshpass -p nano ssh -o StrictHostKeyChecking=no -o PasswordAuthentication=yes -o User='ubuntu' -o ConnectTimeout=10 {{ _vpn.outputs['vpn_public_ip']['value'] }} echo ok"
+  #  register: _instance_available
+  #  until: _instance_available.stdout == "ok"
+  #  retries: 10
+  #  delay: 10
