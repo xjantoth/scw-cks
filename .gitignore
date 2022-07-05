@@ -1,4 +1,6 @@
 ansible/terraform/.terraform.lock.hcl
 ansible/terraform/.terraform
 ansible/terraform/terraform.tfstate
+ansible/terraform/terraform.tfstate.backup
+ansible/id_rsa
 
