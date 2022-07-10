@@ -38,8 +38,18 @@ ssh -i ~/.ssh/scw-k8s-cks  root@$(scw instance server list name=scw-k8s-cmd -ojs
 
 ```bash
 cd ansible
+
+export SCW_TOKEN=<...>
+export ANSIBLE_HOST_KEY_CHECKING=False
+
 ansible-playbook scw-playbook.yaml \
 -e SCW_ACCESS_KEY="<...>" \
 -e SCW_SECRET_KEY="<...>" \
 -e PROJECT_ID="<...>"
+
+scw-cks % mainU  scw-cks ssh -i ssh/id_rsa -o StrictHostKeyChecking=no -o PasswordAuthentication=yes -o User='root' -o ConnectTimeout=10 10.40.50.50
+
 ```
+
+
+

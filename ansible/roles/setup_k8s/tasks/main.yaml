@@ -1,0 +1,62 @@
+---
+- name: set ansible facts
+  set_fact:
+    _os_release: "{{ ansible_facts['distribution_version'] }}"
+
+- name: fail when wrong Ubuntu version
+  command: "ls"
+  failed_when: 
+    - _os_release != '20.04'
+    
+- name: configuring ~/.vimrc
+  template:
+    src: vimrc.j2
+    dest: ~/.vimrc
+
+- name: Inserting a line to .basrc
+  lineinfile:
+    path: ~/.bashrc
+    line: source <(kubectl completion bash)
+
+- name: Inserting a line to .basrc
+  lineinfile:
+    path: ~/.bashrc
+    line: alias k=kubectl
+
+- name: Inserting a line to .basrc
+  lineinfile:
+    path: ~/.bashrc
+    line: alias c=clear
+
+- name: Inserting a line to .basrc
+  lineinfile:
+    path: ~/.bashrc
+    line: complete -F __start_kubectl k
+
+- name: setting up .bashrc
+  command: |
+    sed -i '1s/^/force_color_prompt=yes\n/' ~/.bashrc
+
+- name: Disable SWAP since kubernetes can't work with swap enabled (1/2)
+  shell: |
+    swapoff -a
+
+- name: Disable SWAP in fstab since kubernetes can't work with swap enabled (2/2)
+  replace:
+    path: /etc/fstab
+    regexp: '^([^#].*?\sswap\s+sw\s+.*)$'
+    replace: '# \1'
+
+- name: install required packages
+  package:
+    name:
+      - bash-completion 
+      - binutils
+      - git
+    state: present
+  become: yes
+
+- name: reset kubernetes cluster if existed before
+  command: "kubeadm reset -f"
+  ignore_errors: True
+

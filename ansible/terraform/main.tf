@@ -48,6 +48,19 @@ resource "scaleway_instance_security_group" "k8s" {
   }
 }
 
+data "template_file" "example" {
+template = "${file("${path.module}/../ssh/id_rsa.pub")}"
+}
+
+output "rendered" {
+  value = "${data.template_file.example.rendered}"
+}
+
+resource "scaleway_account_ssh_key" "main" {
+    name        = "terraform"
+    public_key = "${file("${path.module}/../ssh/id_rsa.pub")}"
+}
+
 resource "scaleway_instance_server" "k8s_master" {
   project_id = var.project_id
   type       = "DEV1-S"
@@ -65,6 +78,9 @@ resource "scaleway_instance_server" "k8s_master" {
   }
 
   security_group_id = scaleway_instance_security_group.k8s.id
+  #  depends_on = [
+  #    scaleway_account_ssh_key.main
+  #  ]
 }
 
 
