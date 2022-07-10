@@ -52,4 +52,13 @@ scw-cks % mainU  scw-cks ssh -i ssh/id_rsa -o StrictHostKeyChecking=no -o Pas
 ```
 
 
+###### Destroy scaleway instance
 
+
+```bash
+ansible-playbook scw-playbook-delete.yaml \
+-e SCW_ACCESS_KEY="<...>" \
+-e SCW_SECRET_KEY="<...>" \
+-e PROJECT_ID="<...>"
+
+```
