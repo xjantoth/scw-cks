@@ -57,6 +57,70 @@
   become: yes
 
 - name: reset kubernetes cluster if existed before
-  command: "kubeadm reset -f"
+  shell: "kubeadm reset -f"
   ignore_errors: True
+
+- name: crictl rm 
+  shell: "crictl rm --force $(crictl ps -a -q) || true"
+  ignore_errors: True
+
+- name: unhold packaged
+  shell: "apt-mark unhold kubelet kubeadm kubectl kubernetes-cni || true"
+  ignore_errors: True
+
+- name: remove required packages (cleanup process)
+  package:
+    name:
+      - docker.io 
+      - containerd 
+      - kubelet 
+      - kubeadm 
+      - kubectl 
+      - kubernetes-cni
+    state: absent
+  become: yes
+
+- name: autoremove
+  shell: "apt-get autoremove -y"
+  ignore_errors: True
+  
+- name: systemctl daemon_reload
+  ansible.builtin.systemd:
+    daemon_reload: yes
+
+- name: add key
+  ansible.builtin.apt_key:
+    url: "https://download.opensuse.org/repositories/devel:/kubic:/libcontainers:/testing/xUbuntu_{{ _os_release }}/Release.key"
+    state: present
+
+- name: add kubernetes key
+  ansible.builtin.apt_key:
+    url: "https://packages.cloud.google.com/apt/doc/apt-key.gpg"
+    state: present
+
+- name: Add specified repository into sources list
+  ansible.builtin.apt_repository:
+    repo: "deb https://download.opensuse.org/repositories/devel:/kubic:/libcontainers:/testing/xUbuntu_{{ _os_release }}/ /"
+    state: present
+    filename: devel:kubic:libcontainers:testing.list
+    
+- name: Add kubernetes source list
+  ansible.builtin.apt_repository:
+    repo: "deb http://apt.kubernetes.io/ kubernetes-xenial main"
+    state: present
+    filename: kubernetes.list
+    
+- name: install required packages
+  package:
+    name:
+      - podman 
+      - cri-tools 
+      - containers-common
+    state: present
+  become: yes
+
+- name: configuring /etc/containers/registries.conf
+  template:
+    src: registries.conf.j2
+    dest: /etc/containers/registries.conf
 
