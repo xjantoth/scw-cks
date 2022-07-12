@@ -2,6 +2,7 @@
 - name: set ansible facts
   set_fact:
     _os_release: "{{ ansible_facts['distribution_version'] }}"
+    _calico_url: "https://raw.githubusercontent.com/killer-sh/cks-course-environment/master/cluster-setup/calico.yaml"
 
 - name: fail when wrong Ubuntu version
   command: "ls"
@@ -71,11 +72,13 @@
 - name: remove required packages (cleanup process)
   package:
     name:
-      - docker.io 
-      - containerd 
-      - kubelet 
-      - kubeadm 
-      - kubectl 
+      - podman
+      - containernetworking-plugins
+      - docker.io
+      - containerd
+      - kubelet
+      - kubeadm
+      - kubectl
       - kubernetes-cni
     state: absent
   become: yes
@@ -93,23 +96,17 @@
     url: "https://download.opensuse.org/repositories/devel:/kubic:/libcontainers:/testing/xUbuntu_{{ _os_release }}/Release.key"
     state: present
 
-- name: add kubernetes key
-  ansible.builtin.apt_key:
-    url: "https://packages.cloud.google.com/apt/doc/apt-key.gpg"
-    state: present
-
 - name: Add specified repository into sources list
   ansible.builtin.apt_repository:
     repo: "deb https://download.opensuse.org/repositories/devel:/kubic:/libcontainers:/testing/xUbuntu_{{ _os_release }}/ /"
     state: present
     filename: devel:kubic:libcontainers:testing.list
     
-- name: Add kubernetes source list
-  ansible.builtin.apt_repository:
-    repo: "deb http://apt.kubernetes.io/ kubernetes-xenial main"
-    state: present
-    filename: kubernetes.list
-    
+- name: configuring /etc/containers/registries.conf
+  template:
+    src: registries.conf.j2
+    dest: /etc/containers/registries.conf
+
 - name: install required packages
   package:
     name:
@@ -119,8 +116,140 @@
     state: present
   become: yes
 
-- name: configuring /etc/containers/registries.conf
+- name: removing specified repository into sources list
+  ansible.builtin.apt_repository:
+    repo: "deb https://download.opensuse.org/repositories/devel:/kubic:/libcontainers:/testing/xUbuntu_{{ _os_release }}/ /"
+    state: absent
+    filename: devel:kubic:libcontainers:testing.list
+
+- name: add kubernetes key
+  ansible.builtin.apt_key:
+    url: "https://packages.cloud.google.com/apt/doc/apt-key.gpg"
+    state: present
+
+- name: Add kubernetes source list
+  ansible.builtin.apt_repository:
+    repo: "deb http://apt.kubernetes.io/ kubernetes-xenial main"
+    state: present
+    filename: kubernetes.list
+
+- name: install required packages
+  package:
+    name:
+      - containerd 
+      - kubelet={{ KUBE_VERSION }}-00
+      - kubeadm={{ KUBE_VERSION }}-00
+      - kubectl={{ KUBE_VERSION }}-00
+      - kubernetes-cni
+    state: present
+  become: yes
+
+- name: hold packaged
+  shell: "apt-mark hold kubelet kubeadm kubectl kubernetes-cni || true"
+
+- name: configuring /etc/modules-load.d/containerd.conf
   template:
-    src: registries.conf.j2
-    dest: /etc/containers/registries.conf
+    src: containerd.conf.j2
+    dest: /etc/modules-load.d/containerd.conf
+    
+- name: modeprobe overlay
+  community.general.modprobe:
+    name: overlay
+    state: present
+  become: yes
+
+- name: modeprobe br_netfilter
+  community.general.modprobe:
+    name: br_netfilter
+    state: present
+  become: yes
+
+- name: configuring /etc/sysctl.d/99-kubernetes-cri.conf
+  template:
+    src: 99-kubernetes-cri.conf.j2
+    dest: /etc/sysctl.d/99-kubernetes-cri.conf
+    
+- name: autoremove
+  shell: "sysctl --system"
+  become: yes
+
+- name: create a directory /etc/containerd
+  ansible.builtin.file:
+    path: /etc/containerd
+    state: directory
+    mode: '0755'
+
+- name: configuring /etc/containerd/config.toml
+  template:
+    src: containerd-config.toml.j2
+    dest: /etc/containerd/config.toml
+    
+- name: configuring /etc/crictl.yaml
+  template:
+    src: etc-crictl.yaml.j2
+    dest: /etc/crictl.yaml
+    
+- name: systemctl daemon_reload
+  ansible.builtin.systemd:
+    daemon_reload: yes
+
+- name: enable and start services
+  ansible.builtin.systemd:
+    state: started
+    name: "{{ item }}"
+    enabled: yes
+  with_items:
+    - containerd
+    - kubelet
+
+- name: remove kubeconfig
+  shell: "rm /root/.kube/config || true"
+
+- name: remove kubeconfig
+  shell: |
+    ETCDCTL_VERSION_FULL=etcd-${ETCDCTL_VERSION}-linux-amd64
+    wget https://github.com/etcd-io/etcd/releases/download/{{ ETCDCTL_VERSION }}/${ETCDCTL_VERSION_FULL}.tar.gz
+    tar xzf ${ETCDCTL_VERSION_FULL}.tar.gz
+    mv ${ETCDCTL_VERSION_FULL}/etcdctl /usr/bin/
+    rm -rf ${ETCDCTL_VERSION_FULL} ${ETCDCTL_VERSION_FULL}.tar.gz
+
+  
+- name: kubeadm init ...
+  command: |
+    kubeadm init \
+      --kubernetes-version={{ KUBE_VERSION }} \
+      --ignore-preflight-errors=NumCPU,Mem \
+      --skip-token-print \
+      --pod-network-cidr 192.168.0.0/16 \
+      --cri-socket unix:///run/containerd/containerd.sock
+
+- name: create a directory ~/.kube
+  ansible.builtin.file:
+    path: ~/.kube
+    state: directory
+    mode: '0755'
+
+- name: copy file with owner and permissions
+  shell: "yes | cp -i /etc/kubernetes/admin.conf ~/.kube/config"
+
+- name: kubectl apply -f .../calico.yaml
+  command: kubectl apply -f {{ _calico_url }}
+
+
+- name: kubectl apply -f .../calico.yaml
+  command: "kubeadm token create --print-join-command --ttl 0"
+  register: _join_token
+
+- name: print kubeadm token
+  debug:
+    msg: "{{ _join_token }}"
+
+- name: install etcdctl binary
+  shell: |
+    wget https://github.com/etcd-io/etcd/releases/download/{{ ETCDCTL_VERSION }}/etcd-{{ ETCDCTL_VERSION }}-linux-amd64.tar.gz
+    tar xzf etcd-{{ ETCDCTL_VERSION }}-linux-amd64.tar.gz
+    mv etcd-{{ ETCDCTL_VERSION }}-linux-amd64/etcdctl /usr/bin/
+    rm -rf etcd-{{ ETCDCTL_VERSION }}-linux-amd64 etcd-{{ ETCDCTL_VERSION }}-linux-amd64.tar.gz
+
+
 
