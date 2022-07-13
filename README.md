@@ -39,13 +39,17 @@ ssh -i ~/.ssh/scw-k8s-cks  root@$(scw instance server list name=scw-k8s-cmd -ojs
 ```bash
 cd ansible
 
-export SCW_TOKEN=<...>
+# export required env. variables
+export SCW_TOKEN=...
 export ANSIBLE_HOST_KEY_CHECKING=False
+export SCW_ACCESS_KEY=...
+export SCW_SECRET_KEY=...
+export PROJECT_ID=...
 
 ansible-playbook scw-playbook.yaml \
--e SCW_ACCESS_KEY="<...>" \
--e SCW_SECRET_KEY="<...>" \
--e PROJECT_ID="<...>"
+  -e SCW_ACCESS_KEY="${SCW_ACCESS_KEY}" \
+  -e SCW_SECRET_KEY="${SCW_SECRET_KEY}" \
+  -e PROJECT_ID="${PROJECT_ID}"
 
 scw-cks % mainU  scw-cks ssh -i ssh/id_rsa -o StrictHostKeyChecking=no -o PasswordAuthentication=yes -o User='root' -o ConnectTimeout=10 10.40.50.50
 
@@ -55,9 +59,9 @@ scw-cks % mainU  scw-cks ssh -i ssh/id_rsa -o StrictHostKeyChecking=no -o Pas
 
 ```bash
 ansible-playbook scw-playbook.yaml \
-  -e SCW_ACCESS_KEY="<...>" \
-  -e SCW_SECRET_KEY="<...>" \
-  -e PROJECT_ID="<...>" \
+  -e SCW_ACCESS_KEY="${SCW_ACCESS_KEY}" \
+  -e SCW_SECRET_KEY="${SCW_SECRET_KEY}" \
+  -e PROJECT_ID="${PROJECT_ID}" \
   -i inventory \
   --tags k8s_init \
   -e container_runtime="crio"
@@ -68,8 +72,8 @@ ansible-playbook scw-playbook.yaml \
 
 ```bash
 ansible-playbook scw-playbook-delete.yaml \
--e SCW_ACCESS_KEY="<...>" \
--e SCW_SECRET_KEY="<...>" \
--e PROJECT_ID="<...>"
+  -e SCW_ACCESS_KEY="${SCW_ACCESS_KEY}" \
+  -e SCW_SECRET_KEY="${SCW_SECRET_KEY}" \
+  -e PROJECT_ID="${PROJECT_ID}"
 
 ```
