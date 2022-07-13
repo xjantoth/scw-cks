@@ -51,6 +51,17 @@ scw-cks % mainU  scw-cks ssh -i ssh/id_rsa -o StrictHostKeyChecking=no -o Pas
 
 ```
 
+###### Reconfigure Kubernetes cluster with -e crio or -e containerd
+
+```bash
+ansible-playbook scw-playbook.yaml \
+  -e SCW_ACCESS_KEY="<...>" \
+  -e SCW_SECRET_KEY="<...>" \
+  -e PROJECT_ID="<...>" \
+  -i inventory \
+  --tags k8s_init \
+  -e container_runtime="crio"
+```
 
 ###### Destroy scaleway instance
 

@@ -1,3 +1,5 @@
 KUBE_VERSION: "1.23.6"
 ETCDCTL_VERSION: "v3.5.1"
-container_runtime: "containerd"
+#container_runtime: "containerd"
+container_runtime: "crio"
+calico_url: "https://raw.githubusercontent.com/killer-sh/cks-course-environment/master/cluster-setup/calico.yaml"

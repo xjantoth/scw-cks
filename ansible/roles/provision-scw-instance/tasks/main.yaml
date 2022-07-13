@@ -1,40 +1,84 @@
 ---
-- name: provision Scaleway instance
+- name: generate an OpenSSH rsa keypair to be used by Terraform
   become: no
-  environment:
-    SCW_ACCESS_KEY: "{{ SCW_ACCESS_KEY }}"
-    SCW_SECRET_KEY: "{{ SCW_SECRET_KEY }}"
-    TF_VAR_project_id: "{{ PROJECT_ID }}"  
-  terraform:
-    force_init: yes
-    project_path: "{{ playbook_dir }}/terraform"
-    backend_config:
-      path: "{{ playbook_dir }}/terraform/terraform.tfstate"
-    # state: present
-  register: _scw
+  community.crypto.openssh_keypair:
+    path: "{{ playbook_dir }}/ssh/id_rsa"
+    size: 4096
 
-- name: Adding host to ansible inventory on the fly
-  add_host:
-    name: "{{ _scw.outputs['public_ip']['value'] }}"  # the mane of server
-    groups: scw
-    ansible_host: "{{ _scw.outputs['public_ip']['value'] }}"
-    ansible_user: "root"
-    ansible_connection: "ssh"
-    ansible_ssh_common_args: "-o StrictHostKeyChecking=no"
-    ansible_ssh_private_key_file: "{{ playbook_dir }}/ssh/id_rsa"
-  register: _inv
+- name:
+  tags:
+    - k8s_init
+  block:
+    - name: set ansible facts
+      vars:
+        - _query_public_ip: "outputs.public_ip.value"
+      set_fact:
+        _public_ip: "{{ lookup('file', '{{ playbook_dir }}/terraform/terraform.tfstate') | from_json | json_query(_query_public_ip)}}"
 
-- name: inventory on the fly
-  debug:
-    msg: "{{ _inv }}"
+    - name: printing _public_ip
+      debug:
+        msg: "{{ _public_ip }}"
 
-- name: public key
-  debug:
-    msg: "{{ _scw.outputs['rendered']['value'] }}"
-    
-- name: wait until ssh at Scaleway available
-  command: "ssh -i ssh/id_rsa -o StrictHostKeyChecking=no -o PasswordAuthentication=yes -o User='ubuntu' -o ConnectTimeout=10 {{ _scw.outputs['public_ip']['value'] }} echo ok"
-  register: _instance_available
-  until: _instance_available.stdout == "ok"
-  retries: 10
-  delay: 10
+    - name: check whether Scaleway istance already provisioned (no terrafrom run needed)
+      command: "ssh -i {{ playbook_dir }}/ssh/id_rsa -o StrictHostKeyChecking=no -o PasswordAuthentication=yes -o User='ubuntu' -o ConnectTimeout=10 {{ _public_ip }} echo ok"
+      register: _instance_available
+      until: _instance_available.stdout == "ok"
+      retries: 3
+      delay: 10
+      changed_when: no
+
+    - name: Adding host to ansible inventory on the fly
+      add_host:
+        name: "{{ _public_ip }}"  # the mane of server
+        groups: scw
+        ansible_host: "{{ _public_ip }}"
+        ansible_user: "root"
+        ansible_connection: "ssh"
+        ansible_ssh_common_args: "-o StrictHostKeyChecking=no"
+        ansible_ssh_private_key_file: "{{ playbook_dir }}/ssh/id_rsa"
+      register: _inv
+
+  rescue:
+    # ***************************************************
+    # Run Terraform code if block above fails | first run
+    # ***************************************************
+    - name: provision Scaleway instance
+      become: no
+      environment:
+        SCW_ACCESS_KEY: "{{ SCW_ACCESS_KEY }}"
+        SCW_SECRET_KEY: "{{ SCW_SECRET_KEY }}"
+        TF_VAR_project_id: "{{ PROJECT_ID }}"  
+      terraform:
+        force_init: yes
+        project_path: "{{ playbook_dir }}/terraform"
+        backend_config:
+          path: "{{ playbook_dir }}/terraform/terraform.tfstate"
+        # state: present
+      register: _scw
+
+    - name: public key
+      debug:
+        msg: "{{ _scw.outputs['rendered']['value'] }}"
+        
+    - name: Adding host to ansible inventory on the fly
+      add_host:
+        name: "{{ _scw.outputs['public_ip']['value'] }}"  # the mane of server
+        groups: scw
+        ansible_host: "{{ _scw.outputs['public_ip']['value'] }}"
+        ansible_user: "root"
+        ansible_connection: "ssh"
+        ansible_ssh_common_args: "-o StrictHostKeyChecking=no"
+        ansible_ssh_private_key_file: "{{ playbook_dir }}/ssh/id_rsa"
+      register: _inv
+
+    - name: inventory on the fly
+      debug:
+        msg: "{{ _inv }}"
+
+    - name: wait until ssh at Scaleway available
+      command: "ssh -i {{ playbook_dir }}/ssh/id_rsa -o StrictHostKeyChecking=no -o PasswordAuthentication=yes -o User='ubuntu' -o ConnectTimeout=10 {{ _public_ip }} echo ok"
+      register: _instance_available
+      until: _instance_available.stdout == "ok"
+      retries: 10
+      delay: 10
+

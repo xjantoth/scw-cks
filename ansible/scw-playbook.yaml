@@ -1,19 +1,12 @@
 ---
-- hosts: localhost
-  gather_facts: no
-  tasks:
-    - name: generate an OpenSSH rsa keypair to be used by Terraform
-      become: no
-      community.crypto.openssh_keypair:
-        path: "{{ playbook_dir }}/ssh/id_rsa"
-        size: 4096
-
+# Provision Scaleway instance (if does not exist)
 - hosts: localhost
   gather_facts: no
   become: no
   roles:
     - provision-scw-instance
 
+# Setup Kubernetes cluster via kubeadm 
 - hosts: scw
   gather_facts: yes
   become: no
