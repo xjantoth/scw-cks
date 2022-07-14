@@ -76,7 +76,7 @@
         msg: "{{ _inv }}"
 
     - name: wait until ssh at Scaleway available
-      command: "ssh -i {{ playbook_dir }}/ssh/id_rsa -o StrictHostKeyChecking=no -o PasswordAuthentication=yes -o User='ubuntu' -o ConnectTimeout=10 {{ _public_ip }} echo ok"
+      command: "ssh -i {{ playbook_dir }}/ssh/id_rsa -o StrictHostKeyChecking=no -o PasswordAuthentication=yes -o User='ubuntu' -o ConnectTimeout=10 {{ _scw.outputs['rendered']['value'] }} echo ok"
       register: _instance_available
       until: _instance_available.stdout == "ok"
       retries: 10
