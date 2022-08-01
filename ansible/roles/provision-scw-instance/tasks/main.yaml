@@ -11,32 +11,44 @@
   block:
     - name: set ansible facts
       vars:
-        - _query_public_ip: "outputs.public_ip.value"
+        - _query_master_public_ip: "outputs.master_ipv4.value"
+        - _query_node_public_ip: "outputs.node_ipv4.value"
       set_fact:
-        _public_ip: "{{ lookup('file', '{{ playbook_dir }}/terraform/terraform.tfstate') | from_json | json_query(_query_public_ip)}}"
+        _master_ip: "{{ lookup('file', '{{ playbook_dir }}/terraform/terraform.tfstate') | from_json | json_query(_query_master_public_ip)}}"
+        _node_ip: "{{ lookup('file', '{{ playbook_dir }}/terraform/terraform.tfstate') | from_json | json_query(_query_node_public_ip)}}"
 
-    - name: printing _public_ip
+    - name: printing compound _master_ip and _node_ip 
       debug:
-        msg: "{{ _public_ip }}"
+        msg: "{{ _master_ip }} {{ _node_ip}}"
 
-    - name: check whether Scaleway istance already provisioned (no terrafrom run needed)
-      command: "ssh -i {{ playbook_dir }}/ssh/id_rsa -o StrictHostKeyChecking=no -o PasswordAuthentication=yes -o User='ubuntu' -o ConnectTimeout=10 {{ _public_ip }} echo ok"
+    - name: check whether Scaleway istances already provisioned (no terrafrom run needed)
+      command: "ssh -i {{ playbook_dir }}/ssh/id_rsa -o StrictHostKeyChecking=no -o PasswordAuthentication=yes -o User='ubuntu' -o ConnectTimeout=10 {{ item .split(':')[0]}} echo ok"
       register: _instance_available
       until: _instance_available.stdout == "ok"
       retries: 3
       delay: 10
       changed_when: no
+      loop:
+        - "{{ _master_ip }}"
+        - "{{ _node_ip }}"
 
-    - name: Adding host to ansible inventory on the fly
+    - name: Adding Kubernetes master and node host to ansible inventory on the fly
       add_host:
-        name: "{{ _public_ip }}"  # the mane of server
-        groups: scw
-        ansible_host: "{{ _public_ip }}"
+        name: "{{ item.split(':')[1] }}"  # the mane of server
+        groups: "{{ 'master_group' if item.split(':')[1]=='master' else 'node_group' }}"
+        ansible_host: "{{ item.split(':')[0] }}"
         ansible_user: "root"
         ansible_connection: "ssh"
         ansible_ssh_common_args: "-o StrictHostKeyChecking=no"
         ansible_ssh_private_key_file: "{{ playbook_dir }}/ssh/id_rsa"
+      loop:
+        - "{{ _master_ip }}"
+        - "{{ _node_ip }}"
       register: _inv
+
+    - name: inventory on the fly
+      debug:
+        msg: "{{ _inv }}"
 
   rescue:
     # ***************************************************
@@ -56,19 +68,25 @@
         # state: present
       register: _scw
 
-    - name: public key
+    - name: public ipv4 address of Kubernetes master/node
       debug:
-        msg: "{{ _scw.outputs['public_ip']['value'] }}"
+        msg: "{{ _scw.outputs[{{ item }}]['value'].split(':')[0] }}"
+      loop:
+        - "master_ipv4"
+        - "node_ipv4"
         
     - name: Adding host to ansible inventory on the fly
       add_host:
-        name: "{{ _scw.outputs['public_ip']['value'] }}"  # the mane of server
-        groups: scw
-        ansible_host: "{{ _scw.outputs['public_ip']['value'] }}"
+        name: "{{ _scw.outputs[{{ item }}]['value'].split(':')[1] }}"  # the mane of server
+        groups: "{{ 'master_group' if _scw.outputs[{{ item }}]['value'].split(':')[1]=='master' else 'node_group' }}"
+        ansible_host: "{{ _scw.outputs['{{ item }}']['value'].split(':')[0] }}"
         ansible_user: "root"
         ansible_connection: "ssh"
         ansible_ssh_common_args: "-o StrictHostKeyChecking=no"
         ansible_ssh_private_key_file: "{{ playbook_dir }}/ssh/id_rsa"
+      loop:
+        - "master_ipv4"
+        - "node_ipv4"
       register: _inv
 
     - name: inventory on the fly
@@ -76,9 +94,13 @@
         msg: "{{ _inv }}"
 
     - name: wait until ssh at Scaleway available
-      command: "ssh -i {{ playbook_dir }}/ssh/id_rsa -o StrictHostKeyChecking=no -o PasswordAuthentication=yes -o User='ubuntu' -o ConnectTimeout=10 {{ _scw.outputs['public_ip']['value'] }} echo ok"
+      command: "ssh -i {{ playbook_dir }}/ssh/id_rsa -o StrictHostKeyChecking=no -o PasswordAuthentication=yes -o User='ubuntu' -o ConnectTimeout=10 {{ _scw.outputs[{{ item }}]['value'].split(':')[0] }} echo ok"
       register: _instance_available
       until: _instance_available.stdout == "ok"
       retries: 10
       delay: 10
+      loop:
+        - "master_ipv4"
+        - "node_ipv4"
+
 

@@ -17,19 +17,18 @@ provider "scaleway" {
   region = "fr-par"
 }
 
-resource "scaleway_instance_ip" "public_ip" {
-  project_id = var.project_id
-}
-
-#resource "scaleway_instance_volume" "data" {
-#  project_id = var.project_id
-#  size_in_gb = 20
-#  type       = "l"
-#}
-
 locals {
   ports = [30777, 22, 80, 443, 6443, 10250, 10256, 10257, 10259, 2379, 10248, 10249]
 }
+
+resource "scaleway_instance_ip" "master_ipv4" {
+  project_id = var.project_id
+}
+
+resource "scaleway_instance_ip" "node_ipv4" {
+  project_id = var.project_id
+}
+
 resource "scaleway_instance_security_group" "k8s" {
   project_id              = var.project_id
   inbound_default_policy  = "drop"
@@ -42,21 +41,6 @@ resource "scaleway_instance_security_group" "k8s" {
           port   = inbound_rule.value
       }
     }
-
-  #  inbound_rule {
-  #    action = "accept"
-  #    port   = "22"
-  #  }
-  #
-  #  inbound_rule {
-  #    action = "accept"
-  #    port   = "80"
-  #  }
-  #
-  #  inbound_rule {
-  #    action = "accept"
-  #    port   = "443"
-  #  }
 }
 
 data "template_file" "example" {
@@ -77,9 +61,9 @@ resource "scaleway_instance_server" "k8s_master" {
   type       = "DEV1-S"
   image      = "ubuntu_focal"
 
-  tags = ["kubernetes", "master", "terraform", "ansible"]
+  tags = ["kubernetes", "role=master", "terraform", "ansible"]
 
-  ip_id = scaleway_instance_ip.public_ip.id
+  ip_id = scaleway_instance_ip.master_ipv4.id
 
   # additional_volume_ids = [scaleway_instance_volume.data.id]
 
@@ -89,18 +73,36 @@ resource "scaleway_instance_server" "k8s_master" {
   }
 
   security_group_id = scaleway_instance_security_group.k8s.id
-  #  depends_on = [
-  #    scaleway_account_ssh_key.main
-  #  ]
 }
 
 
-output "public_ip" {
+resource "scaleway_instance_server" "k8s_node" {
+  project_id = var.project_id
+  type       = "DEV1-S"
+  image      = "ubuntu_focal"
+
+  tags = ["kubernetes", "role=node", "terraform", "ansible"]
+
+  ip_id = scaleway_instance_ip.node_ipv4.id
+
+  # additional_volume_ids = [scaleway_instance_volume.data.id]
+
+  root_volume {
+    # The local storage of a DEV1-L instance is 80 GB, subtract 30 GB from the additional l_ssd volume, then the root volume needs to be 50 GB.
+    size_in_gb = 20
+  }
+
+  security_group_id = scaleway_instance_security_group.k8s.id
+}
+
+output "master_ipv4" {
   description = "Public IP address of an instance."
-  value = scaleway_instance_ip.public_ip.address
-
+  value = "${scaleway_instance_ip.master_ipv4.address}:master"
 }
 
-
+output "node_ipv4" {
+  description = "Public IP address of a Kubernetes node instance."
+  value = "${scaleway_instance_ip.node_ipv4.address}:node"
+}
 
 # ansible-playbook rola -e SCW_ACCESS_KEY="SCWN2YGGEBNH0VGRXNR1" SCW_SECRET_KEY="dc884e51-462c-4bda-b679-32bd7d2ed4bc" -e TF_VAR_project_id="431d432b-1849-445f-a66b-7d1ccdf5d34a"  
