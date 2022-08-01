@@ -4,4 +4,4 @@ ansible/terraform/terraform.tfstate
 ansible/terraform/terraform.tfstate.backup
 ansible/id_rsa
 ansible/ssh
-
+secrets
