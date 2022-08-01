@@ -258,10 +258,10 @@
   tags:
     - k8s_init
 
-- name: kubectl apply -f .../calico.yaml
-  command: kubectl apply -f {{ calico_url }}
-  tags:
-    - k8s_init
+    #- name: kubectl apply -f .../calico.yaml
+    #  command: kubectl apply -f {{ calico_url }}
+    #  tags:
+    #    - k8s_init
 
 - name: kubeadm token ...
   command: "kubeadm token create --print-join-command --ttl 0"
