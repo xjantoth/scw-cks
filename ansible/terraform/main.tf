@@ -27,25 +27,36 @@ resource "scaleway_instance_ip" "public_ip" {
 #  type       = "l"
 #}
 
+locals {
+  ports = [30777, 22, 80, 443, 6443, 10250, 10256, 10257, 10259, 2379, 10248, 10249]
+}
 resource "scaleway_instance_security_group" "k8s" {
   project_id              = var.project_id
   inbound_default_policy  = "drop"
   outbound_default_policy = "accept"
 
-  inbound_rule {
-    action = "accept"
-    port   = "22"
-  }
+    dynamic "inbound_rule" {
+      for_each = local.ports
+      content {
+          action = "accept"
+          port   = inbound_rule.value
+      }
+    }
 
-  inbound_rule {
-    action = "accept"
-    port   = "80"
-  }
-
-  inbound_rule {
-    action = "accept"
-    port   = "443"
-  }
+  #  inbound_rule {
+  #    action = "accept"
+  #    port   = "22"
+  #  }
+  #
+  #  inbound_rule {
+  #    action = "accept"
+  #    port   = "80"
+  #  }
+  #
+  #  inbound_rule {
+  #    action = "accept"
+  #    port   = "443"
+  #  }
 }
 
 data "template_file" "example" {
