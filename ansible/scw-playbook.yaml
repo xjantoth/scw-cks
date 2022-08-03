@@ -20,4 +20,9 @@
   roles:
     - init_k8s
 
-
+# Join Kubenretes node kubeadm join ...
+- hosts: node_group
+  gather_facts: yes
+  become: no
+  roles:
+    - join_k8s

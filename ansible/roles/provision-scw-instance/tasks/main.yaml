@@ -9,6 +9,10 @@
   tags:
     - k8s_init
   block:
+    #- name: fail naschval
+    #  ansible.builtin.fail:
+    #    msg: failni naschval
+
     - name: set ansible facts
       vars:
         - _query_master_public_ip: "outputs.master_ipv4.value"
@@ -22,7 +26,7 @@
         msg: "{{ _master_ip }} {{ _node_ip}}"
 
     - name: check whether Scaleway istances already provisioned (no terrafrom run needed)
-      command: "ssh -i {{ playbook_dir }}/ssh/id_rsa -o StrictHostKeyChecking=no -o PasswordAuthentication=yes -o User='ubuntu' -o ConnectTimeout=10 {{ item .split(':')[0]}} echo ok"
+      command: "ssh -i {{ playbook_dir }}/ssh/id_rsa -o StrictHostKeyChecking=no -o PasswordAuthentication=yes -o User='ubuntu' -o ConnectTimeout=10 {{ item.split(':')[0]}} echo ok"
       register: _instance_available
       until: _instance_available.stdout == "ok"
       retries: 3
@@ -68,18 +72,24 @@
         # state: present
       register: _scw
 
+    - name: _scw
+      debug:
+        msg: "{{ _scw }}"
+        #
+    # TODO: wrong syntax
     - name: public ipv4 address of Kubernetes master/node
       debug:
-        msg: "{{ _scw.outputs[{{ item }}]['value'].split(':')[0] }}"
+        msg: "{{ _scw.outputs[item]['value'].split(':')[0] }}"
+        #msg: '{{ _scw.outputs[item]["value"].split(":")[0] }}'
       loop:
         - "master_ipv4"
         - "node_ipv4"
         
     - name: Adding host to ansible inventory on the fly
       add_host:
-        name: "{{ _scw.outputs[{{ item }}]['value'].split(':')[1] }}"  # the mane of server
-        groups: "{{ 'master_group' if _scw.outputs[{{ item }}]['value'].split(':')[1]=='master' else 'node_group' }}"
-        ansible_host: "{{ _scw.outputs['{{ item }}']['value'].split(':')[0] }}"
+        name: "{{ _scw.outputs[item]['value'].split(':')[1] }}"  # the mane of server
+        groups: "{{ 'master_group' if _scw.outputs[item]['value'].split(':')[1]=='master' else 'node_group' }}"
+        ansible_host: "{{ _scw.outputs[item]['value'].split(':')[0] }}"
         ansible_user: "root"
         ansible_connection: "ssh"
         ansible_ssh_common_args: "-o StrictHostKeyChecking=no"
@@ -94,7 +104,7 @@
         msg: "{{ _inv }}"
 
     - name: wait until ssh at Scaleway available
-      command: "ssh -i {{ playbook_dir }}/ssh/id_rsa -o StrictHostKeyChecking=no -o PasswordAuthentication=yes -o User='ubuntu' -o ConnectTimeout=10 {{ _scw.outputs[{{ item }}]['value'].split(':')[0] }} echo ok"
+      command: "ssh -i {{ playbook_dir }}/ssh/id_rsa -o StrictHostKeyChecking=no -o PasswordAuthentication=yes -o User='ubuntu' -o ConnectTimeout=10 {{ _scw.outputs[item]['value'].split(':')[0] }} echo ok"
       register: _instance_available
       until: _instance_available.stdout == "ok"
       retries: 10
