@@ -26,3 +26,10 @@
   become: no
   roles:
     - join_k8s
+      #
+# Try to deploy istio ...
+- hosts: master_group
+  gather_facts: yes
+  become: no
+  roles:
+    - istio

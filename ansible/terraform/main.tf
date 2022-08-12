@@ -44,7 +44,7 @@ resource "scaleway_instance_security_group" "k8s" {
 }
 
 data "template_file" "example" {
-template = "${file("${path.module}/../ssh/id_rsa.pub")}"
+  template = "${file("${path.module}/../ssh/id_rsa.pub")}"
 }
 
 output "rendered" {
@@ -58,7 +58,7 @@ resource "scaleway_account_ssh_key" "main" {
 
 resource "scaleway_instance_server" "k8s_master" {
   project_id = var.project_id
-  type       = "DEV1-S"
+  type       = "DEV1-M"
   image      = "ubuntu_focal"
 
   tags = ["kubernetes", "role=master", "terraform", "ansible"]
@@ -69,7 +69,7 @@ resource "scaleway_instance_server" "k8s_master" {
 
   root_volume {
     # The local storage of a DEV1-L instance is 80 GB, subtract 30 GB from the additional l_ssd volume, then the root volume needs to be 50 GB.
-    size_in_gb = 20
+    size_in_gb = 40
   }
 
   security_group_id = scaleway_instance_security_group.k8s.id
@@ -78,7 +78,7 @@ resource "scaleway_instance_server" "k8s_master" {
 
 resource "scaleway_instance_server" "k8s_node" {
   project_id = var.project_id
-  type       = "DEV1-S"
+  type       = "DEV1-M"
   image      = "ubuntu_focal"
 
   tags = ["kubernetes", "role=node", "terraform", "ansible"]
@@ -89,7 +89,7 @@ resource "scaleway_instance_server" "k8s_node" {
 
   root_volume {
     # The local storage of a DEV1-L instance is 80 GB, subtract 30 GB from the additional l_ssd volume, then the root volume needs to be 50 GB.
-    size_in_gb = 20
+    size_in_gb = 40
   }
 
   security_group_id = scaleway_instance_security_group.k8s.id

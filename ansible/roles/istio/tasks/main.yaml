@@ -1,0 +1,24 @@
+- name: download istio binaries
+  shell: curl -L https://istio.io/downloadIstio | sh -
+  tags:
+    - istio
+
+- name: place istioctl binary at proper location
+  shell: cp istio-*/bin/istioctl /usr/local/bin/
+  tags:
+    - istio
+
+- name: istioctl install
+  command: istioctl install -y
+  tags:
+    - istio
+
+- name: kubectl apply istio addons (kiali, prometheus, grafana, jaeger, ...)
+  shell: kubectl apply -f istio-*/samples/addons/
+  tags:
+    - istio
+
+- name: label default namespace istio-injection enabled
+  command: kubectl label namespace default istio-injection=enabled
+  tags:
+    - istio

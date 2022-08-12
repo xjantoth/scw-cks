@@ -8,6 +8,7 @@
 - name:
   tags:
     - k8s_init
+    - istio
   block:
     #- name: fail naschval
     #  ansible.builtin.fail:
