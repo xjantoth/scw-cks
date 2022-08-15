@@ -1,0 +1,141 @@
+---
+apiVersion: networking.istio.io/v1alpha3
+kind: Gateway
+metadata:
+  name: service-gateway
+spec:
+  selector:
+    istio: ingressgateway # use Istio default gateway implementation
+  servers:
+  - port:
+      number: 80
+      name: http
+      protocol: HTTP
+    hosts:
+    - "*"
+  - port:
+      number: 443
+      name: https
+      protocol: HTTPS
+    hosts:
+    - "*"
+    tls:
+      mode: PASSTHROUGH
+---
+apiVersion: networking.istio.io/v1alpha3
+kind: VirtualService
+metadata:
+  name: kiali-ingress
+spec:
+  hosts:
+  - "kiali.vl.k8s"
+  gateways:
+  - service-gateway
+  http:
+  - route:
+    - destination:
+        host: kiali.istio-system.svc.cluster.local
+        port:
+          number: 20001
+---
+apiVersion: networking.istio.io/v1alpha3
+kind: VirtualService
+metadata:
+  name: argocd-ingress
+spec:
+  hosts:
+  - "argocd.vl.k8s"
+  gateways:
+  - service-gateway
+  tls:
+  - match:
+    - sniHosts:
+      - "argocd.vl.k8s"
+    route:
+    - destination:
+        host: argocd-server.argocd.svc.cluster.local
+        port:
+          number: 443
+---
+apiVersion: networking.istio.io/v1alpha3
+kind: VirtualService
+metadata:
+  name: frontend-ingress
+spec:
+  hosts:
+  - "frontend.vl.k8s"
+  gateways:
+  - service-gateway
+  http:
+  - route:
+    - destination:
+        host: frontend.default.svc.cluster.local
+        port:
+          number: 80
+---
+apiVersion: networking.istio.io/v1alpha3
+kind: VirtualService
+metadata:
+  name: grafana-ingress
+spec:
+  hosts:
+  - "grafana.vl.k8s"
+  gateways:
+  - service-gateway
+  http:
+  - route:
+    - destination:
+        host: grafana.istio-system.svc.cluster.local
+        port:
+          number: 3000
+---
+apiVersion: networking.istio.io/v1alpha3
+kind: VirtualService
+metadata:
+  name: nginx-ingress
+spec:
+  hosts:
+  - "nginx.vl.k8s"
+  gateways:
+  - service-gateway
+  http:
+  - route:
+    - destination:
+        host: nginx.default.svc.cluster.local
+        port:
+          number: 80
+---
+apiVersion: networking.istio.io/v1alpha3
+kind: VirtualService
+metadata:
+  name: nginx-ingress
+spec:
+  hosts:
+  - "tracing.vl.k8s"
+  gateways:
+  - service-gateway
+  http:
+  - route:
+    - destination:
+        host: tracing.istio-system.svc.cluster.local
+        port:
+          number: 80
+---
+apiVersion: networking.istio.io/v1alpha3
+kind: VirtualService
+metadata:
+  name: workflow-ingress
+spec:
+  hosts:
+  - "workflow.vl.k8s"
+  gateways:
+  - service-gateway
+  tls:
+  - match:
+    - sniHosts:
+      - "workflow.vl.k8s"
+    route:
+    - destination:
+        host: argo-server.argo.svc.cluster.local
+        port:
+          number: 2746
