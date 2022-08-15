@@ -6,11 +6,30 @@
   roles:
     - provision-scw-instance
 
-# Setup Kubernetes cluster via kubeadm 
-- hosts: scw
+# Setup Kubernetes master/node 
+- hosts: ["master_group", "node_group"]
   gather_facts: yes
   become: no
   roles:
-    - setup_k8s
+    - common_settings
 
+# Setup Kubernetes master via kubeadm init ...
+- hosts: master_group
+  gather_facts: yes
+  become: no
+  roles:
+    - init_k8s
 
+# Join Kubenretes node kubeadm join ...
+- hosts: node_group
+  gather_facts: yes
+  become: no
+  roles:
+    - join_k8s
+      #
+# Try to deploy istio ...
+- hosts: master_group
+  gather_facts: yes
+  become: no
+  roles:
+    - istio

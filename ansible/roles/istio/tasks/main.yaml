@@ -1,0 +1,68 @@
+- name: download istio binaries
+  shell: curl -L https://istio.io/downloadIstio | sh -
+  tags:
+    - istio
+
+- name: place istioctl binary at proper location
+  shell: cp istio-*/bin/istioctl /usr/local/bin/
+  tags:
+    - istio
+
+- name: untaint all nodes (applies to master)
+  shell: "kubectl taint node --all node-role.kubernetes.io/master-"
+  ignore_errors: True
+  tags:
+    - istio
+
+- name: istioctl install
+  command: istioctl install -y
+  tags:
+    - istio
+
+- name: kubectl apply istio addons (kiali, prometheus, grafana, jaeger, ...)
+  shell: kubectl apply -f istio-*/samples/addons/
+  tags:
+    - istio
+
+- name: label default namespace istio-injection enabled
+  command: kubectl label namespace default istio-injection=enabled
+  ignore_errors: True
+  tags:
+    - istio
+    
+- name: argocd
+  shell: |
+    kubectl create namespace argocd
+    kubectl apply -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
+  tags:
+    - istio
+
+- name: argoworkflow
+  shell: |
+    kubectl create ns argo
+    kubectl apply -n argo -f https://raw.githubusercontent.com/argoproj/argo-workflows/master/manifests/quick-start-postgres.yaml
+  tags:
+    - istio
+
+- name: argo-events
+  shell: |
+    kubectl create namespace argo-events
+    kubectl apply -f https://raw.githubusercontent.com/argoproj/argo-events/stable/manifests/install.yaml
+    # Install with a validating admission controller
+    kubectl apply -f https://raw.githubusercontent.com/argoproj/argo-events/stable/manifests/install-validating-webhook.yaml
+    kubectl apply -n argo-events -f https://raw.githubusercontent.com/argoproj/argo-events/stable/examples/eventbus/native.yaml
+
+  tags:
+    - istio
+
+- name: read istio virtual services file
+  copy:
+    src: "virtual-services.yaml"
+    dest: "/opt/"
+  tags:
+    - istio
+    
+- name: create istio virtual services
+  shell: kubectl apply -f /opt/virtual-services.yaml
+  tags:
+    - istio
