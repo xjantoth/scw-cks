@@ -66,5 +66,16 @@
   shell: kubectl apply -f /opt/virtual-services.yaml
   tags:
     - istio
-    kubectl create ns argo
-    kubectl apply -n argo -f https://raw.githubusercontent.com/argoproj/argo-workflows/master/manifests/quick-start-postgres.yaml
+
+- name: github webhook example
+  shell: |
+    # Notes:
+    # github https://argoproj.github.io/argo-events/eventsources/setup/github/
+    # general: https://argoproj.github.io/argo-events/quick_start/
+    # sensor rbac
+    kubectl apply -n argo-events -f https://raw.githubusercontent.com/argoproj/argo-events/master/examples/rbac/sensor-rbac.yaml
+    # workflow rbac
+    kubectl apply -n argo-events -f https://raw.githubusercontent.com/argoproj/argo-events/master/examples/rbac/workflow-rbac.yaml
+
+  tags:
+    - istio
