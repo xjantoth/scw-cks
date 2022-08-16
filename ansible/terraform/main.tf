@@ -95,6 +95,16 @@ resource "scaleway_instance_server" "k8s_node" {
   security_group_id = scaleway_instance_security_group.k8s.id
 }
 
+output "ssh_master_ipv4" {
+  description = "Public IP address of an instance."
+  value = "master: ssh -o StrictHostKeyChecking=no -i ssh/id_rsa root@${scaleway_instance_ip.master_ipv4.address}"
+}
+
+output "ssh_node_ipv4" {
+  description = "Public IP address of a Kubernetes node instance."
+  value = "node: ssh -o StrictHostKeyChecking=no -i ssh/id_rsa root@${scaleway_instance_ip.node_ipv4.address}"
+}
+
 output "master_ipv4" {
   description = "Public IP address of an instance."
   value = "${scaleway_instance_ip.master_ipv4.address}:master"

@@ -66,3 +66,5 @@
   shell: kubectl apply -f /opt/virtual-services.yaml
   tags:
     - istio
+    kubectl create ns argo
+    kubectl apply -n argo -f https://raw.githubusercontent.com/argoproj/argo-workflows/master/manifests/quick-start-postgres.yaml
