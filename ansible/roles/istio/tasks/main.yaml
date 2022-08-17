@@ -37,16 +37,17 @@
   tags:
     - istio
 
-- name: argoworkflow
-  shell: |
-    kubectl create ns argo
-    kubectl apply -n argo -f https://raw.githubusercontent.com/argoproj/argo-workflows/master/manifests/quick-start-postgres.yaml
-  tags:
-    - istio
+  #- name: argoworkflow
+  #  shell: |
+  #    kubectl create ns argo
+  #    kubectl apply -n argo -f https://raw.githubusercontent.com/argoproj/argo-workflows/master/manifests/quick-start-postgres.yaml
+  #  tags:
+  #    - istio
 
-- name: argo-events
+- name: argo-events and argoworkflow
   shell: |
     kubectl create namespace argo-events
+    kubectl apply -n argo-events -f https://raw.githubusercontent.com/argoproj/argo-workflows/master/manifests/quick-start-postgres.yaml
     kubectl apply -f https://raw.githubusercontent.com/argoproj/argo-events/stable/manifests/install.yaml
     # Install with a validating admission controller
     kubectl apply -f https://raw.githubusercontent.com/argoproj/argo-events/stable/manifests/install-validating-webhook.yaml
@@ -122,6 +123,12 @@
   tags:
     - istio
 
+- name: copy argo sensor file (simple)
+  copy:
+    src: github-sensor-simple.yaml
+    dest: /opt/github-sensor-simple.yaml
+  tags:
+    - istio
   #- name: print github access token
   #  debug:
   #    msg: "{{ GITHUB_SECRET }}"
@@ -133,5 +140,6 @@
     kubectl create secret generic github-access --from-literal token="{{ GITHUB_SECRET }}" -n argo-events
     kubectl apply -f /opt/github-event-source.yaml -n argo-events
     kubectl apply -f /opt/github-sensor.yaml -n argo-events
+    kubectl apply -f /opt/github-sensor-simple.yaml -n argo-events
   tags:
     - istio
