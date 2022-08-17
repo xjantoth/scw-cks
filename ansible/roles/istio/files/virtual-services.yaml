@@ -136,7 +136,7 @@ spec:
       - "workflow.vl.k8s"
     route:
     - destination:
-        host: argo-server.argo.svc.cluster.local
+        host: argo-server.argo-events.svc.cluster.local
         port:
           number: 2746
 ---
