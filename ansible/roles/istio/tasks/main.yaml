@@ -122,6 +122,12 @@
   tags:
     - istio
 
+- name: copy argo sensor file (simple)
+  copy:
+    src: github-sensor-simple.yaml
+    dest: /opt/github-sensor-simple.yaml
+  tags:
+    - istio
   #- name: print github access token
   #  debug:
   #    msg: "{{ GITHUB_SECRET }}"
@@ -133,5 +139,6 @@
     kubectl create secret generic github-access --from-literal token="{{ GITHUB_SECRET }}" -n argo-events
     kubectl apply -f /opt/github-event-source.yaml -n argo-events
     kubectl apply -f /opt/github-sensor.yaml -n argo-events
+    kubectl apply -f /opt/github-sensor-simple.yaml -n argo-events
   tags:
     - istio
