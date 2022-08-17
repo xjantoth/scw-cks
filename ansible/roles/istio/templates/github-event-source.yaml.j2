@@ -6,27 +6,27 @@ spec:
   service:
     ports:
       - name: example
-        port: 12000
-        targetPort: 12000
+        port: {{ K8S_GITHUB_EVENT_SOURCE_PORT }}
+        targetPort: {{ K8S_GITHUB_EVENT_SOURCE_PORT }}
   github:
-    example:
+    cks:
       repositories:
-        - owner: xjantoth
+        - owner: {{ GITHUB_REPO_OWNER }}
           names:
-            - scw-cks
+          - {{ GITHUB_REPO_NAME }}
       # Github will send events to following port and endpoint
       webhook:
         # endpoint to listen to events on
-        endpoint: /push
+        endpoint: {{ GITHUB_REPO_PATH }}
         # port to run internal HTTP server on
-        port: "12000"
+        port: "{{ K8S_GITHUB_EVENT_SOURCE_PORT }}"
         # HTTP request method to allow. In this case, only POST requests are accepted
         method: POST
         # url the event-source will use to register at Github.
         # This url must be reachable from outside the cluster.
         # The name for the service is in `<event-source-name>-eventsource-svc` format.
         # You will need to create an Ingress or Openshift Route for the event-source service so that it can be reached from GitHub.
-        url: http://51.158.106.182:32500
+        url: http://{{ K8S_MASTER_IPV4 }}:{{ K8S_ISTIO_INGRESSGATEWAY_HTTP_NODE_PORT }}
       # type of events to listn to.
       # following listens to everything, hence *
       # You can find more info on https://developer.github.com/v3/activity/events/types/

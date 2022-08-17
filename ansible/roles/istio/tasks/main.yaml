@@ -67,7 +67,7 @@
   tags:
     - istio
 
-- name: github webhook example
+- name: setup github webhook example RBAC
   shell: |
     # Notes:
     # github https://argoproj.github.io/argo-events/eventsources/setup/github/
@@ -76,6 +76,62 @@
     kubectl apply -n argo-events -f https://raw.githubusercontent.com/argoproj/argo-events/master/examples/rbac/sensor-rbac.yaml
     # workflow rbac
     kubectl apply -n argo-events -f https://raw.githubusercontent.com/argoproj/argo-events/master/examples/rbac/workflow-rbac.yaml
+  tags:
+    - istio
 
+- name: extract K8S_ISTIO_INGRESSGATEWAY_HTTP_NODE_PORT
+  shell: kubectl -n istio-system get service istio-ingressgateway -o jsonpath='{.spec.ports[?(@.name=="http2")].nodePort}'
+  register: _k8s_istio_ingressgateway_http_node_port
+  tags:
+    - istio
+
+- name: print _k8s_istio_ingressgateway_http_node_port
+  debug:
+    msg: "{{ _k8s_istio_ingressgateway_http_node_port.stdout_lines }}"
+  tags:
+    - istio
+
+- name: set ansible facts
+  vars:
+    - _query_master_public_ip: "outputs.master_ipv4.value"
+    - _query_node_public_ip: "outputs.node_ipv4.value"
+  set_fact:
+    _master_ip: "{{ lookup('file', '{{ playbook_dir }}/terraform/terraform.tfstate') | from_json | json_query(_query_master_public_ip)}}"
+    _node_ip: "{{ lookup('file', '{{ playbook_dir }}/terraform/terraform.tfstate') | from_json | json_query(_query_node_public_ip)}}"
+  tags:
+    - istio
+
+- name: template argo eventsource file
+  vars:
+    K8S_GITHUB_EVENT_SOURCE_PORT: 12000
+    GITHUB_REPO_OWNER: "xjantoth"
+    GITHUB_REPO_NAME: "scw-cks"
+    GITHUB_REPO_PATH: "/push"
+    K8S_MASTER_IPV4: "{{ _master_ip.split(':')[0] }}"
+    K8S_ISTIO_INGRESSGATEWAY_HTTP_NODE_PORT: "{{ _k8s_istio_ingressgateway_http_node_port.stdout_lines[0] }}"
+  template:
+    src: github-event-source.yaml.j2
+    dest: /opt/github-event-source.yaml
+  tags:
+    - istio
+
+- name: copy argo sensor file
+  copy:
+    src: github-sensor.yaml
+    dest: /opt/github-sensor.yaml
+  tags:
+    - istio
+
+  #- name: print github access token
+  #  debug:
+  #    msg: "{{ GITHUB_SECRET }}"
+  #  tags:
+  #    - istio
+
+- name: create github webhook example (k8s secret, eventsource, sensor)
+  shell: |
+    kubectl create secret generic github-access --from-literal token="{{ GITHUB_SECRET }}" -n argo-events
+    kubectl apply -f /opt/github-event-source.yaml -n argo-events
+    kubectl apply -f /opt/github-sensor.yaml -n argo-events
   tags:
     - istio

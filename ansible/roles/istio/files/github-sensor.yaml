@@ -1,0 +1,61 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Sensor
+metadata:
+  name: github
+spec:
+  template:
+    serviceAccountName: operate-workflow-sa
+  dependencies:
+    - name: test-dep
+      eventSourceName: github
+      eventName: cks
+  triggers:
+    - template:
+        name: github-workflow-trigger
+        k8s:
+          operation: create
+          source:
+            resource:
+              apiVersion: argoproj.io/v1alpha1
+              kind: Workflow
+              metadata:
+                name: github-
+              spec:
+                entrypoint: whalesay
+                arguments:
+                  parameters:
+                    - name: pr-title
+                    - name: pr-number
+                    - name: short-sha
+                templates:
+                  - name: whalesay
+                    inputs:
+                      parameters:
+                        - name: pr-title
+                        - name: pr-number
+                        - name: short-sha
+                    container:
+                      image: docker/whalesay:latest
+                      command: [cowsay]
+                      args: ["{{inputs.parameters.pr-title}}"]
+          parameters:
+            - src:
+                dependencyName: test-dep
+                dataKey: body.pull_request.title
+              dest: spec.arguments.parameters.0.value
+            - src:
+                dependencyName: test-dep
+                dataKey: body.pull_request.number
+              dest: spec.arguments.parameters.1.value
+            - src:
+                dependencyName: test-dep
+                dataTemplate: "{{ .Input.body.pull_request.head.sha | substr 0 7 }}"
+              dest: spec.arguments.parameters.2.value
+            # Append pull request number and short sha to dynamically assign workflow name <github-21500-2c065a>
+            - src:
+                dependencyName: test-dep
+                dataTemplate: "{{ .Input.body.pull_request.number }}-{{ .Input.body.pull_request.head.sha | substr 0 7 }}"
+              dest: metadata.name
+              operation: append
+      retryStrategy:
+        steps: 3

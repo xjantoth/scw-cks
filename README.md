@@ -76,4 +76,25 @@ ansible-playbook scw-playbook-delete.yaml \
   -e SCW_SECRET_KEY="${SCW_SECRET_KEY}" \
   -e PROJECT_ID="${PROJECT_ID}"
 
+# Argo
+ansible-playbook scw-playbook.yaml \
+  -e SCW_ACCESS_KEY="${SCW_ACCESS_KEY}" \
+  -e SCW_SECRET_KEY="${SCW_SECRET_KEY}" \
+  -e PROJECT_ID="${PROJECT_ID}" \
+  -i inventory \
+  -e container_runtime="containerd" --tags istio -e GITHUB_SECRET=secret_generated_at_github
+
+```
+
+
+###### Webohook via Argo Events
+
+```bash
+# Port 32500 is HTTP port of Istio's ingressgateway
+# https://istio.io/latest/docs/tasks/traffic-management/ingress/ingress-control/
+export INGRESS_PORT=$(kubectl -n istio-system get service istio-ingressgateway -o jsonpath='{.spec.ports[?(@.name=="http2")].nodePort}')
+export SECURE_INGRESS_PORT=$(kubectl -n istio-system get service istio-ingressgateway -o jsonpath='{.spec.ports[?(@.name=="https")].nodePort}')
+
+curl -XPOST 51.158.106.182:32500/push -H "Content-Type: application/json" -d '{"name": "linuxize", "email": "linuxize@example.com"}'
+
 ```
