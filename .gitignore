@@ -1,7 +1,7 @@
-ansible/terraform/.terraform.lock.hcl
-ansible/terraform/.terraform
-ansible/terraform/terraform.tfstate
-ansible/terraform/terraform.tfstate.backup
+**/.terraform.lock.hcl
+**/.terraform
+**/terraform.tfstate
+**/terraform.tfstate.backup
 ansible/id_rsa
 ansible/ssh
 secrets

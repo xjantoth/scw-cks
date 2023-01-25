@@ -60,6 +60,7 @@ resource "scaleway_instance_server" "k8s_master" {
   project_id = var.project_id
   type       = "DEV1-M"
   image      = "ubuntu_focal"
+  name       = "master"
 
   tags = ["kubernetes", "role=master", "terraform", "ansible"]
 
@@ -80,6 +81,7 @@ resource "scaleway_instance_server" "k8s_node" {
   project_id = var.project_id
   type       = "DEV1-M"
   image      = "ubuntu_focal"
+  name       = "node"
 
   tags = ["kubernetes", "role=node", "terraform", "ansible"]
 

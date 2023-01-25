@@ -43,6 +43,9 @@
     regexp: '^([^#].*?\sswap\s+sw\s+.*)$'
     replace: '# \1'
 
+- name: silly apt update
+  shell: "apt update"
+
 - name: install required packages
   package:
     name:
@@ -92,14 +95,14 @@
 
 - name: add key required for containerd and crio deps
   ansible.builtin.apt_key:
-    url: "https://download.opensuse.org/repositories/devel:/kubic:/libcontainers:/testing/xUbuntu_{{ _os_release }}/Release.key"
+    url: "https://download.opensuse.org/repositories/devel:/kubic:/libcontainers:/stable/xUbuntu_{{ _os_release }}/Release.key"
     state: present
 
 - name: add specified repository into sources list
   ansible.builtin.apt_repository:
-    repo: "deb https://download.opensuse.org/repositories/devel:/kubic:/libcontainers:/testing/xUbuntu_{{ _os_release }}/ /"
+    repo: "deb https://download.opensuse.org/repositories/devel:/kubic:/libcontainers:/stable/xUbuntu_{{ _os_release }}/ /"
     state: present
-    filename: devel:kubic:libcontainers:testing.list
+    filename: devel:kubic:libcontainers:stable.list
     
 - name: add CRIO key required for containerd and crio deps
   ansible.builtin.apt_key:
@@ -110,7 +113,7 @@
   ansible.builtin.apt_repository:
     repo: "deb http://download.opensuse.org/repositories/devel:/kubic:/libcontainers:/stable:/cri-o:/{{ KUBE_VERSION.split('.')[:2]|join('.') }}/xUbuntu_{{ _os_release }}/ /"
     state: present
-    filename: devel:kubic:libcontainers:testing.list
+    filename: devel:kubic:libcontainers:stable-crio.list
     
 - name: install required packages
   package:
@@ -130,9 +133,9 @@
 
 - name: removing specified repository into sources list
   ansible.builtin.apt_repository:
-    repo: "deb https://download.opensuse.org/repositories/devel:/kubic:/libcontainers:/testing/xUbuntu_{{ _os_release }}/ /"
+    repo: "deb https://download.opensuse.org/repositories/devel:/kubic:/libcontainers:/stable/xUbuntu_{{ _os_release }}/ /"
     state: absent
-    filename: devel:kubic:libcontainers:testing.list
+    filename: devel:kubic:libcontainers:stable.list
 
 - name: add kubernetes key
   ansible.builtin.apt_key:
@@ -200,9 +203,20 @@
   ansible.builtin.systemd:
     daemon_reload: yes
 
+    ### install containerd 1.6 over apt-installed-version
+- name: install containerd 1.6.2 (workaround)
+  shell: |
+    wget https://github.com/containerd/containerd/releases/download/v{{ CONTAINERD_VERSION }}/containerd-{{ CONTAINERD_VERSION }}-linux-amd64.tar.gz
+    tar xvf containerd-{{ CONTAINERD_VERSION }}-linux-amd64.tar.gz
+    #systemctl stop containerd
+    \mv bin/* /usr/bin
+    \rm -rf bin containerd-{{ CONTAINERD_VERSION }}-linux-amd64.tar.gz
+    #systemctl unmask containerd
+    #systemctl start containerd
+
 - name: enable and start services
   ansible.builtin.systemd:
-    state: started
+    state: restarted
     name: "{{ item }}"
     enabled: yes
   with_items:
